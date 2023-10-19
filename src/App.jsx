@@ -4,12 +4,12 @@ function App() {
   // Example code to create a simple tone
   const [frequency, setFrequency] = useState(1000);
   const [loading, setLoading] = useState(false);
-  const createOscillator = function (rightSide) {
+  const createOscillator = function (frequency, rightSide) {
     const audioContext = new (window.AudioContext ||
       window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     oscillator.type = 'sine'; // You can change the wave type
-    oscillator.frequency.value = 1000; // Set the frequency
+    oscillator.frequency.value = frequency; // Set the frequency
 
     // Create a channel splitter and merger
     const splitter = audioContext.createChannelSplitter(2); // 2 channels (stereo)
@@ -24,7 +24,10 @@ function App() {
 
   const playTone = function (e) {
     setLoading(e.target.dataset.side);
-    const oscillator = createOscillator(e.target.dataset.side === 'right');
+    const oscillator = createOscillator(
+      frequency,
+      e.target.dataset.side === 'right'
+    );
     oscillator.start();
     setTimeout(() => {
       oscillator.stop();
@@ -38,6 +41,7 @@ function App() {
       <div>
         <input
           type="number"
+          step={1000}
           className="py-2 px-4 rounded-lg bg-gray-300 text-black text-center"
           value={frequency}
           onChange={e => setFrequency(e.target.value)}
