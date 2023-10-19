@@ -1,10 +1,9 @@
-import { useRef, useState, useEffect } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
-import './App.css';
+import { useState } from 'react';
 
 function App() {
   // Example code to create a simple tone
+  const [frequency, setFrequency] = useState(1000);
+  const [loading, setLoading] = useState(false);
   const createOscillator = function (rightSide) {
     const audioContext = new (window.AudioContext ||
       window.webkitAudioContext)();
@@ -23,19 +22,42 @@ function App() {
     return oscillator;
   };
 
-  const playTone = function () {
-    const oscillator = createOscillator();
+  const playTone = function (e) {
+    setLoading(e.target.dataset.side);
+    const oscillator = createOscillator(e.target.dataset.side === 'right');
     oscillator.start();
     setTimeout(() => {
       oscillator.stop();
+      setLoading(false);
     }, 1000);
   };
 
   return (
     <>
-      <h1>Click to play sound</h1>
-      <div className="card">
-        <button onClick={playTone}>Play Sound</button>
+      <h1 className="text-4xl font-bold my-4">Click to play sound</h1>
+      <div>
+        <input
+          type="number"
+          className="py-2 px-4 rounded-lg bg-gray-300 text-black text-center"
+          value={frequency}
+          onChange={e => setFrequency(e.target.value)}
+        />
+      </div>
+      <div className="card flex gap-4 my-4">
+        <button
+          className="bg-purple-800 outline-2 outline-red-900 p-4 rounded-lg w-40 h-14"
+          data-side="left"
+          onClick={playTone}
+        >
+          {loading === 'left' ? '...' : 'Play Left Sound'}
+        </button>
+        <button
+          className="bg-purple-800 outline-2 outline-red-900 p-4 rounded-lg w-40 h-14"
+          data-side="right"
+          onClick={playTone}
+        >
+          {loading === 'right' ? '...' : 'Play Right Sound'}
+        </button>
       </div>
     </>
   );
