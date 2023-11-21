@@ -1,38 +1,44 @@
 import { useState } from 'react';
 
 function App() {
-  // Example code to create a simple tone
   const [frequency, setFrequency] = useState(1000);
   const [loading, setLoading] = useState(false);
-  const createOscillator = function (frequency, rightSide) {
-    const audioContext = new (window.AudioContext ||
-      window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    oscillator.type = 'sine'; // You can change the wave type
-    oscillator.frequency.value = frequency; // Set the frequency
+  const [volume, setVolume] = useState(40); // Initial volume in decibels
 
-    // Create a channel splitter and merger
-    const splitter = audioContext.createChannelSplitter(2); // 2 channels (stereo)
+  const createOscillator = function (frequency, rightSide) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain(); // Create a GainNode
+
+    oscillator.type = 'sine';
+    oscillator.frequency.value = frequency;
+
+    const splitter = audioContext.createChannelSplitter(2);
     const merger = audioContext.createChannelMerger(2);
 
-    // Connect the oscillator to the splitter and then to the right channel (channel 1)
-    oscillator.connect(splitter);
-    splitter.connect(merger, 0, rightSide ? 1 : 0); // Connect the right channel
+    oscillator.connect(gainNode); // Connect oscillator to the gainNode
+    gainNode.connect(splitter);
+    splitter.connect(merger, 0, rightSide ? 1 : 0);
     merger.connect(audioContext.destination);
-    return oscillator;
+
+    // Set the gain value based on the volume in decibels
+    gainNode.gain.value = Math.pow(10, volume / 20);
+
+    return { oscillator, gainNode };
   };
 
   const playTone = function (e) {
     setLoading(e.target.dataset.side);
-    const oscillator = createOscillator(
-      frequency,
-      e.target.dataset.side === 'right'
-    );
+    const { oscillator, gainNode } = createOscillator(frequency, e.target.dataset.side === 'right');
     oscillator.start();
     setTimeout(() => {
       oscillator.stop();
       setLoading(false);
     }, 1000);
+  };
+
+  const handleVolumeChange = (e) => {
+    setVolume(parseFloat(e.target.value)); // Update the volume in decibels
   };
 
   return (
@@ -44,7 +50,7 @@ function App() {
           step={1000}
           className="py-2 px-4 rounded-lg bg-gray-300 text-black text-center"
           value={frequency}
-          onChange={e => setFrequency(e.target.value)}
+          onChange={(e) => setFrequency(e.target.value)}
         />
       </div>
       <div className="card flex gap-4 my-4">
@@ -62,6 +68,17 @@ function App() {
         >
           {loading === 'right' ? '...' : 'Play Right Sound'}
         </button>
+      </div>
+      <div className='flex items-center gap-3 justify-center'>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={10}
+          value={volume}
+          onChange={handleVolumeChange}
+        />
+        <span>{volume} dB</span>
       </div>
     </>
   );
