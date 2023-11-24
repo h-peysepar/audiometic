@@ -1,12 +1,33 @@
+import Chart from './Chart.jsx';
 import { useState } from 'react';
-
+import {
+  CartesianGrid,
+  Dot,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 function App() {
-  const [frequency, setFrequency] = useState(1000);
+  const [line, setLine] = useState(
+    Array.from({ length: 7 }).reduce((output, item, i, array) => {
+      if (!output.length) {
+        return [{ frequency: 125 }];
+      }
+      const entity = { frequency: output[i - 1].frequency * 2 };
+      if (i !== array.length - 1) entity.volume = 40;
+      return [...output, entity];
+    }, [])
+  );
   const [loading, setLoading] = useState(false);
-  const [volume, setVolume] = useState(40); // Initial volume in decibels
+  const [focused, setFocused] = useState({ volume: 40, frequency: 1000 });
 
   const createOscillator = function (frequency, rightSide) {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain(); // Create a GainNode
 
@@ -27,9 +48,50 @@ function App() {
     return { oscillator, gainNode };
   };
 
+  const Dot = function (props) {
+    if (
+      props.payload.frequency === focused.frequency &&
+      props.payload.volume === focused.volume
+    ) {
+      return (
+        <svg
+          width="14"
+          height="14"
+          x={props.cx - 7}
+          y={props.cy - 7}
+          viewBox="0 0 14 14"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <rect x="0" y="0" width="14" height="14" fill="transparent" />
+          <circle cx="7" cy="7" r="5" fill="red" stroke="red" strokeWidth="2" />
+        </svg>
+      );
+    }
+    return null;
+  };
+
+  const changeVolume = function (e) {
+    const treshold = +e.target.dataset.treshold;
+    setLine(prev => {
+      prev = [...prev];
+      const targetIndex = prev.findIndex(
+        i => i.frequency === focused.frequency && i.volume === focused.volume
+      );
+      prev[targetIndex].volume = prev[targetIndex].volume + treshold;
+      setFocused(prevv => ({
+        ...prevv,
+        volume: prevv.volume + treshold,
+      }));
+      return prev;
+    });
+  };
+
   const playTone = function (e) {
     setLoading(e.target.dataset.side);
-    const { oscillator, gainNode } = createOscillator(frequency, e.target.dataset.side === 'right');
+    const { oscillator } = createOscillator(
+      frequency,
+      e.target.dataset.side === 'right'
+    );
     oscillator.start();
     setTimeout(() => {
       oscillator.stop();
@@ -37,48 +99,90 @@ function App() {
     }, 1000);
   };
 
-  const handleVolumeChange = (e) => {
-    setVolume(parseFloat(e.target.value)); // Update the volume in decibels
+  const changeFrequency = function (e) {
+    const treshold = +e.target.dataset.treshold;
+    const targetIndex = line.findIndex(
+      i => i.frequency === focused.frequency && i.volume === focused.volume
+    );
+    setFocused({
+      volume: line[targetIndex + treshold].volume,
+      frequency: line[targetIndex + treshold].frequency,
+    });
   };
 
   return (
     <>
-      <h1 className="text-4xl font-bold my-4">Click to play sound</h1>
-      <div>
-        <input
-          type="number"
-          step={1000}
-          className="py-2 px-4 rounded-lg bg-gray-300 text-black text-center"
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value)}
-        />
-      </div>
-      <div className="card flex gap-4 my-4">
+      <h1 className="text-4xl font-bold my-2">Click to play sound</h1>
+      <div className="card flex gap-4 my-2 justify-center">
         <button
-          className="bg-purple-800 outline-2 outline-red-900 p-4 rounded-lg w-40 h-14"
+          className="bg-purple-800 outline-2 outline-red-900 px-4 py-2 rounded-lg w-44 h-12"
+          data-treshold="1"
+          onClick={changeFrequency}
+        >
+          Increase Frequency
+        </button>
+        <button
+          className="bg-purple-800 outline-2 outline-red-900 px-4 py-2 rounded-lg w-44 h-12"
+          data-treshold="-1"
+          onClick={changeFrequency}
+        >
+          Decrease Frequency
+        </button>
+      </div>
+      <div className="card flex gap-4 my-2 justify-center">
+        <button
+          className="bg-purple-800 outline-2 outline-red-900 px-4 py-2 rounded-lg w-44 h-12"
           data-side="left"
           onClick={playTone}
         >
           {loading === 'left' ? '...' : 'Play Left Sound'}
         </button>
         <button
-          className="bg-purple-800 outline-2 outline-red-900 p-4 rounded-lg w-40 h-14"
+          className="bg-purple-800 outline-2 outline-red-900 px-4 py-2 rounded-lg w-44 h-12"
           data-side="right"
           onClick={playTone}
         >
           {loading === 'right' ? '...' : 'Play Right Sound'}
         </button>
       </div>
-      <div className='flex items-center gap-3 justify-center'>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={10}
-          value={volume}
-          onChange={handleVolumeChange}
-        />
-        <span>{volume} dB</span>
+      <div className="flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={line}
+            // margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="frequency" />
+            <YAxis
+              height={1000}
+              ticks={Array.from({ length: 11 }).map((_, i) => i * 10)}
+            />
+            {/* <Tooltip /> */}
+            <Legend />
+            <Line
+              type="linear"
+              dataKey="volume"
+              stroke="#FF0000"
+              dot={<Dot />}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="card flex gap-4 my-2 justify-center">
+        <button
+          className="bg-purple-800 outline-2 outline-red-900 px-4 py-2 rounded-lg w-44 h-12"
+          data-treshold={10}
+          onClick={changeVolume}
+        >
+          I Can't Hear
+        </button>
+        <button
+          className="bg-purple-800 outline-2 outline-red-900 px-4 py-2 rounded-lg w-44 h-12"
+          data-treshold={-10}
+          onClick={changeVolume}
+        >
+          I Can Hear
+        </button>
       </div>
     </>
   );
