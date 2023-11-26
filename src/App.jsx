@@ -43,7 +43,7 @@ function App() {
     merger.connect(audioContext.destination);
 
     // Set the gain value based on the volume in decibels
-    gainNode.gain.value = Math.pow(10, volume / 20);
+    gainNode.gain.value = Math.pow(10, focused.volume / 20);
 
     return { oscillator, gainNode };
   };
@@ -89,7 +89,7 @@ function App() {
   const playTone = function (e) {
     setLoading(e.target.dataset.side);
     const { oscillator } = createOscillator(
-      frequency,
+      focused.frequency,
       e.target.dataset.side === 'right'
     );
     oscillator.start();
